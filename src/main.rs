@@ -8,6 +8,8 @@ use ethers::core::{abi::Abi, types::Address};
 use ethers::providers::{Http, Provider};
 use eyre::WrapErr;
 
+// We use `abigen!()` to generate bindings automatically
+// for smart contract calls. This is a pretty useful procmacro.
 ethers::contract::abigen!(
     Bridge,
     "res/Bridge.abi";
@@ -18,7 +20,27 @@ ethers::contract::abigen!(
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    // Bridge.sol contract
+    // Connect to the network. We are assuming that a `hardhat` node is running in the
+    // background, with some contracts already deployed.
+    //
+    // <https://github.com/sug0/ethereum-bridge/tree/tiago/test/deploy-contracts>
+    let client = Arc::new(
+        Provider::<Http>::try_from("http://localhost:8545").wrap_err("Failed to get provider")?,
+    );
+
+    test_abigen_current_val_set(Arc::clone(&client)).await?;
+    test_abigen_transfer_eth_to_nam(Arc::clone(&client)).await?;
+    test_runtime_current_val_set(
+        Arc::try_unwrap(client).map_err(|_| eyre::eyre!("Failed to unwrap client Arc"))?,
+    )
+    .await?;
+
+    Ok(())
+}
+
+/// Read the current validator set. The contract is initialized from a JSON file
+/// read at runtime.
+async fn test_runtime_current_val_set(client: Provider<Http>) -> eyre::Result<()> {
     let bridge_address = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707".parse::<Address>()?;
     let bridge_abi: Abi = serde_json::from_str(&{
         let path = "res/Bridge.abi";
@@ -26,49 +48,37 @@ async fn main() -> eyre::Result<()> {
     })
     .wrap_err("Failed to parse json")?;
 
-    // connect to the network
-    let client =
-        Provider::<Http>::try_from("http://localhost:8545").wrap_err("Failed to get provider")?;
-
-    test_bridge(&client).await?;
-    test_bridge2(&client).await?;
-
-    // create the contract object at the address
+    // Instantiate a contract at runtime, from the provided
+    // parsed ABI.
     let contract = Contract::new(bridge_address, bridge_abi, client);
 
-    // Calling constant methods is done by calling `call()` on the method builder.
-    // (if the function takes no arguments, then you must use `()` as the argument)
-    let init_value = contract
+    // Call the contract. We do the type checking manually.
+    let valset = contract
         .method::<_, FixedBytes>("currentValidatorSetHash", ())?
         .call()
         .await
         .wrap_err("Failed to get currentValidatorSetHash")?;
 
-    println!("{init_value:?}");
-
-    // Non-constant methods are executed via the `send()` call on the method builder.
-    //let call = contract.method::<_, H256>("setValue", "hi".to_owned())?;
-    //let pending_tx = call.send().await?;
-
-    // `await`ing on the pending transaction resolves to a transaction receipt
-    //let receipt = pending_tx.confirmations(6).await?;
-
+    println!("{valset:?}");
     Ok(())
 }
 
-async fn test_bridge(client: &Provider<Http>) -> eyre::Result<()> {
-    let addr = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707".parse::<Address>()?;
-    let bridge = Bridge::new(addr, Arc::new(client.clone()));
-    let wtf = bridge.current_validator_set_hash().call().await?;
-    println!("{wtf:?}");
+/// Read the current validator set. The contract is initialized from a JSON file
+/// read at compile-time.
+async fn test_abigen_current_val_set(client: Arc<Provider<Http>>) -> eyre::Result<()> {
+    let bridge_address = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707".parse::<Address>()?;
+    let bridge = Bridge::new(bridge_address, client);
+    // The method `.call()` is used for read-only calls. Therefore, it does
+    // not need to be sent as a tx, and does not need block confirmations.
+    let valset = bridge.current_validator_set_hash().call().await?;
+    println!("{valset:?}");
     Ok(())
 }
 
-async fn test_bridge2(client: &Provider<Http>) -> eyre::Result<()> {
+/// Perform a transfor of some TestERC20 tokens to an arbitrary Namada address.
+async fn test_abigen_transfer_eth_to_nam(client: Arc<Provider<Http>>) -> eyre::Result<()> {
     let bridge_address = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707".parse::<Address>()?;
     let test_erc20_address = "0x5FbDB2315678afecb367f032d93F642f64180aa3".parse::<Address>()?;
-
-    let client = Arc::new(client.clone());
 
     let bridge = Bridge::new(bridge_address.clone(), Arc::clone(&client));
     let test_erc20 = TestERC20::new(test_erc20_address.clone(), client);
@@ -76,7 +86,7 @@ async fn test_bridge2(client: &Provider<Http>) -> eyre::Result<()> {
     let approve_result = test_erc20.approve(bridge_address, 100.into()).await?;
 
     if !approve_result {
-        panic!("Tx not approved");
+        return Err(eyre::eyre!("TestERC20 transfer tx not approved"));
     }
 
     let transfers = vec![NamadaTransfer {
@@ -89,6 +99,8 @@ async fn test_bridge2(client: &Provider<Http>) -> eyre::Result<()> {
     let transf_result_call = bridge.transfer_to_namada(transfers, 1.into());
     let pending_tx = transf_result_call.send().await?;
 
+    // The method `.send()` is used for mutable calls. For this reason, it
+    // needs a certain number of block confirmations.
     let transf_result = pending_tx.confirmations(3).await?;
     println!("{transf_result:?}");
 

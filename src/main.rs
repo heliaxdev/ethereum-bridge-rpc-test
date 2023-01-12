@@ -10,13 +10,26 @@ use eyre::WrapErr;
 
 // We use `abigen!()` to generate bindings automatically
 // for smart contract calls. This is a pretty useful procmacro.
-ethers::contract::abigen!(
-    Bridge,
-    "res/Bridge.abi";
+mod bridge {
+    ethers::contract::abigen!(
+        Bridge,
+        "res/Bridge.abi";
+    );
+}
 
-    TestERC20,
-    "res/TestERC20.abi";
-);
+mod test_erc_20 {
+    ethers::contract::abigen!(
+        TestERC20,
+        "res/TestERC20.abi";
+    );
+}
+
+mod governance {
+    ethers::contract::abigen!(
+        Governance,
+        "res/Governance.abi";
+    );
+}
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -67,7 +80,7 @@ async fn test_runtime_current_val_set(client: Provider<Http>) -> eyre::Result<()
 /// read at compile-time.
 async fn test_abigen_current_val_set(client: Arc<Provider<Http>>) -> eyre::Result<()> {
     let bridge_address = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707".parse::<Address>()?;
-    let bridge = Bridge::new(bridge_address, client);
+    let bridge = bridge::Bridge::new(bridge_address, client);
     // The method `.call()` is used for read-only calls. Therefore, it does
     // not need to be sent as a tx, and does not need block confirmations.
     let valset = bridge.current_validator_set_hash().call().await?;
@@ -80,8 +93,8 @@ async fn test_abigen_transfer_eth_to_nam(client: Arc<Provider<Http>>) -> eyre::R
     let bridge_address = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707".parse::<Address>()?;
     let test_erc20_address = "0x5FbDB2315678afecb367f032d93F642f64180aa3".parse::<Address>()?;
 
-    let bridge = Bridge::new(bridge_address.clone(), Arc::clone(&client));
-    let test_erc20 = TestERC20::new(test_erc20_address.clone(), client);
+    let bridge = bridge::Bridge::new(bridge_address.clone(), Arc::clone(&client));
+    let test_erc20 = test_erc_20::TestERC20::new(test_erc20_address.clone(), client);
 
     let approve_result = test_erc20.approve(bridge_address, 100.into()).await?;
 
@@ -89,7 +102,7 @@ async fn test_abigen_transfer_eth_to_nam(client: Arc<Provider<Http>>) -> eyre::R
         return Err(eyre::eyre!("TestERC20 transfer tx not approved"));
     }
 
-    let transfers = vec![NamadaTransfer {
+    let transfers = vec![bridge::NamadaTransfer {
         from: test_erc20_address,
         to: "atest1v4ehgw36xuunwd6989prwdfkxqmnvsfjxs6nvv6xxucrs3f3xcmns3fcxdzrvvz9xverzvzr56le8f"
             .into(),

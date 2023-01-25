@@ -7,6 +7,8 @@ use ethers::abi::{self, ParamType, Tokenizable};
 use ethers::types::{H160, U256};
 use eyre::WrapErr;
 
+use crate::contracts::governance::Signature;
+
 /// Tag type to indicate a query to the active set of validators
 /// at some epoch.
 enum ActiveValidatorSet {}
@@ -72,10 +74,31 @@ impl ExecuteQuery for QueryExecutor<ActiveValidatorSet> {
         let Ok(Some(token)) = abi::decode(&params, &abi_data).map(|mut t| t.pop()) else {
             eyre::bail!("Invalid active valset ABI encoded data");
         };
-        let decoded: (Vec<H160>, Vec<U256>, U256) = Tokenizable::from_token(token)
-            .expect("Decoding shouldn't fail, given we type checked already");
+        Ok(Tokenizable::from_token(token)
+            .expect("Decoding shouldn't fail, given we type checked already"))
+    }
+}
 
-        Ok(decoded)
+impl ExecuteQuery for QueryExecutor<ValidatorSetUpdateProof> {
+    type Response = ([u8; 32], [u8; 32], Vec<Signature>);
+
+    fn execute_query(&self) -> eyre::Result<Self::Response> {
+        let abi_data = query_valset_abi_data("proof", self.epoch)?;
+
+        let params = [ParamType::Tuple(vec![
+            ParamType::FixedBytes(32),
+            ParamType::FixedBytes(32),
+            ParamType::Array(Box::new(ParamType::Tuple(vec![
+                ParamType::FixedBytes(32),
+                ParamType::FixedBytes(32),
+                ParamType::Uint(8),
+            ]))),
+        ])];
+        let Ok(Some(token)) = abi::decode(&params, &abi_data).map(|mut t| t.pop()) else {
+            eyre::bail!("Invalid valset proof ABI encoded data");
+        };
+        Ok(Tokenizable::from_token(token)
+            .expect("Decoding shouldn't fail, given we type checked already"))
     }
 }
 

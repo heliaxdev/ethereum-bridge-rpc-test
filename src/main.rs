@@ -1,12 +1,10 @@
 mod contracts;
 
 use std::convert::TryFrom;
-use std::fs;
+
 use std::sync::Arc;
 
-use ethers::abi::FixedBytes;
-use ethers::contract::Contract;
-use ethers::core::{abi::Abi, types::Address};
+use ethers::core::types::Address;
 use ethers::providers::{Http, Provider};
 use eyre::WrapErr;
 
@@ -22,50 +20,8 @@ async fn main() -> eyre::Result<()> {
         Provider::<Http>::try_from("http://localhost:8545").wrap_err("Failed to get provider")?,
     );
 
-    test_abigen_current_val_set(Arc::clone(&client)).await?;
     test_abigen_transfer_eth_to_nam(Arc::clone(&client)).await?;
-    test_runtime_current_val_set(
-        Arc::try_unwrap(client).map_err(|_| eyre::eyre!("Failed to unwrap client Arc"))?,
-    )
-    .await?;
 
-    Ok(())
-}
-
-/// Read the current validator set. The contract is initialized from a JSON file
-/// read at runtime.
-async fn test_runtime_current_val_set(client: Provider<Http>) -> eyre::Result<()> {
-    let bridge_address = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707".parse::<Address>()?;
-    let bridge_abi: Abi = serde_json::from_str(&{
-        let path = "res/Bridge.abi";
-        fs::read_to_string(path).wrap_err_with(|| format!("Failed to read file path: {path}"))?
-    })
-    .wrap_err("Failed to parse json")?;
-
-    // Instantiate a contract at runtime, from the provided
-    // parsed ABI.
-    let contract = Contract::new(bridge_address, bridge_abi, client);
-
-    // Call the contract. We do the type checking manually.
-    let valset = contract
-        .method::<_, FixedBytes>("currentValidatorSetHash", ())?
-        .call()
-        .await
-        .wrap_err("Failed to get currentValidatorSetHash")?;
-
-    println!("{valset:?}");
-    Ok(())
-}
-
-/// Read the current validator set. The contract is initialized from a JSON file
-/// read at compile-time.
-async fn test_abigen_current_val_set(client: Arc<Provider<Http>>) -> eyre::Result<()> {
-    let bridge_address = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707".parse::<Address>()?;
-    let bridge = bridge::Bridge::new(bridge_address, client);
-    // The method `.call()` is used for read-only calls. Therefore, it does
-    // not need to be sent as a tx, and does not need block confirmations.
-    let valset = bridge.current_validator_set_hash().call().await?;
-    println!("{valset:?}");
     Ok(())
 }
 

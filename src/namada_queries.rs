@@ -4,10 +4,9 @@ use std::marker::PhantomData;
 use std::process::Command;
 
 use ethers::abi::{self, ParamType, Tokenizable};
-use ethers::types::{H160, U256};
 use eyre::WrapErr;
 
-use crate::contracts::governance::Signature;
+use crate::contracts::governance::{Signature, ValidatorSetArgs};
 
 /// Tag type to indicate a query to the active set of validators
 /// at some epoch.
@@ -61,7 +60,7 @@ pub trait ExecuteQuery {
 }
 
 impl ExecuteQuery for QueryExecutor<ActiveValidatorSet> {
-    type Response = (Vec<H160>, Vec<U256>, U256);
+    type Response = ValidatorSetArgs;
 
     fn execute_query(&self) -> eyre::Result<Self::Response> {
         let abi_data = query_valset_abi_data("active", self.epoch)?;

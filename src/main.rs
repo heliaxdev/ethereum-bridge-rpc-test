@@ -1,3 +1,5 @@
+mod contracts;
+
 use std::convert::TryFrom;
 use std::fs;
 use std::sync::Arc;
@@ -8,28 +10,7 @@ use ethers::core::{abi::Abi, types::Address};
 use ethers::providers::{Http, Provider};
 use eyre::WrapErr;
 
-// We use `abigen!()` to generate bindings automatically
-// for smart contract calls. This is a pretty useful procmacro.
-mod bridge {
-    ethers::contract::abigen!(
-        Bridge,
-        "res/Bridge.abi";
-    );
-}
-
-mod test_erc_20 {
-    ethers::contract::abigen!(
-        TestERC20,
-        "res/TestERC20.abi";
-    );
-}
-
-mod governance {
-    ethers::contract::abigen!(
-        Governance,
-        "res/Governance.abi";
-    );
-}
+use self::contracts::{bridge, test_erc20};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
@@ -93,8 +74,8 @@ async fn test_abigen_transfer_eth_to_nam(client: Arc<Provider<Http>>) -> eyre::R
     let bridge_address = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707".parse::<Address>()?;
     let test_erc20_address = "0x5FbDB2315678afecb367f032d93F642f64180aa3".parse::<Address>()?;
 
-    let bridge = bridge::Bridge::new(bridge_address.clone(), Arc::clone(&client));
-    let test_erc20 = test_erc_20::TestERC20::new(test_erc20_address.clone(), client);
+    let bridge = bridge::Bridge::new(bridge_address, Arc::clone(&client));
+    let test_erc20 = test_erc20::TestERC20::new(test_erc20_address, client);
 
     let approve_result = test_erc20.approve(bridge_address, 100.into()).await?;
 

@@ -10,20 +10,27 @@ use ethers::providers::{Http, Provider};
 use eyre::WrapErr;
 
 use self::contracts::{bridge, test_erc20};
+use self::namada_queries::ExecuteQuery;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    // Connect to the network. We are assuming that a `hardhat` node is running in the
-    // background, with some contracts already deployed.
-    //
-    // <https://github.com/sug0/ethereum-bridge/tree/tiago/test/deploy-contracts>
-    let client = Arc::new(
-        Provider::<Http>::try_from("http://localhost:8545").wrap_err("Failed to get provider")?,
-    );
-
-    test_abigen_transfer_eth_to_nam(Arc::clone(&client)).await?;
-
+    let query = namada_queries::QueryExecutor::validator_set_update_proof();
+    let response = query.execute_query()?;
+    println!("{response:#?}");
     Ok(())
+    /*
+        // Connect to the network. We are assuming that a `hardhat` node is running in the
+        // background, with some contracts already deployed.
+        //
+        // <https://github.com/sug0/ethereum-bridge/tree/tiago/test/deploy-contracts>
+        let client = Arc::new(
+            Provider::<Http>::try_from("http://localhost:8545").wrap_err("Failed to get provider")?,
+        );
+
+        test_abigen_transfer_eth_to_nam(Arc::clone(&client)).await?;
+
+        Ok(())
+    */
 }
 
 /// Perform a transfor of some TestERC20 tokens to an arbitrary Namada address.

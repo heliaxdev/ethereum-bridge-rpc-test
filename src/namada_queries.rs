@@ -113,7 +113,7 @@ fn query_valset_abi_data(command: &str, epoch: Option<u64>) -> eyre::Result<Vec<
 
     let output = cmd.output().wrap_err("Failed to execute `namadar`")?;
     if output.status.code() != Some(0) {
-        eyre::bail!("The Namada relayer halted unexpectedly");
+        eyre::bail!("The Namada relayer halted unexpectedly; is the ledger running?");
     }
 
     // fetch hex data as str and validate it

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ -z "$NAMADA_REPO" ]; then
+    echo Set '$NAMADA_REPO' to the location of the namada repository >&2
+    exit 1
+fi
+
+exec env \
+    NAMADA_BASE_DIR=${NAMADA_REPO}/.namada \
+    PATH=${NAMADA_REPO}/target/debug/:${PATH} \
+    ./target/debug/ethereum-bridge-rpc-test

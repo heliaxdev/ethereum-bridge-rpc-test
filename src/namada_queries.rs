@@ -1,4 +1,4 @@
-//! Queries to ABI encoded data in Namada.
+//! Queries to Namada.
 
 use std::marker::PhantomData;
 use std::process::Command;
@@ -11,11 +11,11 @@ use crate::contracts::governance::Signature;
 
 /// Tag type to indicate a query to the active set of validators
 /// at some epoch.
-enum ActiveValidatorSet {}
+pub enum ActiveValidatorSet {}
 
 /// Tag type to indicate a query to a proof of the active set
 /// of validators at some epoch.
-enum ValidatorSetUpdateProof {}
+pub enum ValidatorSetUpdateProof {}
 
 /// Execute queries to ABI encoded data in Namada.
 pub struct QueryExecutor<K> {

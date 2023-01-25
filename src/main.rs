@@ -1,4 +1,5 @@
 mod contracts;
+mod namada_queries;
 
 use std::convert::TryFrom;
 

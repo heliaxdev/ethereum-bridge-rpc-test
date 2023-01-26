@@ -31,14 +31,20 @@ struct RelayArgs {
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    println!("Fetching active validator set...");
+    let Some(epoch) = std::env::args()
+        .nth(1)
+        .map(|x| x.parse::<u64>())
+        .transpose()
+        .wrap_err("Failed to parse epoch")? else {
+        eyre::bail!("No epoch argument provided");
+    };
 
-    let query = QueryExecutor::active_validator_set();
+    println!("Fetching active validator set of epoch {epoch}...");
+
+    let query = QueryExecutor::active_validator_set().at_epoch(epoch);
     let valset_args = query.execute_query()?;
-    let epoch = valset_args.nonce.as_u64();
 
-    println!("Done! The current epoch is {epoch}.");
-    println!("Now fetching a validator set update proof...");
+    println!("Done! Now fetching a validator set update proof...");
 
     let query = QueryExecutor::validator_set_update_proof().at_epoch(epoch + 1);
     let (bridge_hash, gov_hash, proof) = query.execute_query()?;

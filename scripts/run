@@ -8,4 +8,4 @@ fi
 exec env \
     NAMADA_BASE_DIR=${NAMADA_REPO}/.namada \
     PATH=${NAMADA_REPO}/target/debug/:${PATH} \
-    ./target/debug/ethereum-bridge-rpc-test
+    ./target/debug/ethereum-bridge-rpc-test $@

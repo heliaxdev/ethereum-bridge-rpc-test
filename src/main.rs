@@ -38,15 +38,18 @@ async fn main() -> eyre::Result<()> {
         .wrap_err("Failed to parse epoch")? else {
         eyre::bail!("No epoch argument provided");
     };
+    if epoch == 0 {
+        eyre::bail!("Epoch value must be greater than 0");
+    }
 
     println!("Fetching active validator set of epoch {epoch}...");
 
-    let query = QueryExecutor::active_validator_set().at_epoch(epoch);
+    let query = QueryExecutor::active_validator_set().at_epoch(epoch - 1);
     let valset_args = query.execute_query()?;
 
     println!("Done! Now fetching a validator set update proof...");
 
-    let query = QueryExecutor::validator_set_update_proof().at_epoch(epoch + 1);
+    let query = QueryExecutor::validator_set_update_proof().at_epoch(epoch);
     let (bridge_hash, gov_hash, proof) = query.execute_query()?;
 
     println!("Done! Relaying proof...");

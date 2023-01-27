@@ -87,7 +87,7 @@ async fn relay_proof(client: Arc<Provider<Http>>, args: RelayArgs) -> eyre::Resu
         proof,
     } = args;
 
-    let governance_address = "0x0165878A594ca255338adfa4d48449f69242Eb8F".parse::<Address>()?;
+    let governance_address = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9".parse::<Address>()?;
     let governance = Governance::new(governance_address, client);
 
     let relay_op = governance

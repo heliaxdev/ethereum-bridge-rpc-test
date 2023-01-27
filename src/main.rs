@@ -42,9 +42,10 @@ async fn main() -> eyre::Result<()> {
         eyre::bail!("Epoch value must be greater than 0");
     }
 
-    println!("Fetching active validator set of epoch {epoch}...");
+    let prev_epoch = epoch - 1;
+    println!("Fetching active validator set of epoch {prev_epoch}...");
 
-    let query = QueryExecutor::active_validator_set().at_epoch(epoch - 1);
+    let query = QueryExecutor::active_validator_set().at_epoch(prev_epoch);
     let valset_args = query.execute_query()?;
 
     println!("Done! Now fetching a validator set update proof...");

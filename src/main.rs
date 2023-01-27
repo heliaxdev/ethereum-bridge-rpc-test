@@ -107,7 +107,7 @@ async fn relay_proof(client: Arc<Provider<Http>>, args: RelayArgs) -> eyre::Resu
 
     // The method `.send()` is used for mutable calls. For this reason, it
     // needs a certain number of block confirmations.
-    let transf_result = pending_tx.confirmations(3).await?;
+    let transf_result = pending_tx.confirmations(1).await?;
     println!("{transf_result:?}");
 
     Ok(())

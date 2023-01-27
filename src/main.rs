@@ -48,7 +48,7 @@ async fn main() -> eyre::Result<()> {
 /// Read the current validator set. The contract is initialized from a JSON file
 /// read at compile-time.
 async fn test_abigen_current_val_set(client: Arc<Provider<Http>>) -> eyre::Result<()> {
-    let bridge_address = "0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9".parse::<Address>()?;
+    let bridge_address = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9".parse::<Address>()?;
     let bridge = bridge::Bridge::new(bridge_address, client);
     // The method `.call()` is used for read-only calls. Therefore, it does
     // not need to be sent as a tx, and does not need block confirmations.
@@ -59,7 +59,7 @@ async fn test_abigen_current_val_set(client: Arc<Provider<Http>>) -> eyre::Resul
 
 /// Read the current nonce.
 async fn test_abigen_current_nonce(client: Arc<Provider<Http>>) -> eyre::Result<()> {
-    let governance_address = "0xdc64a140aa3e981100a9beca4e685f962f0cf6c9".parse::<Address>()?;
+    let governance_address = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9".parse::<Address>()?;
     let governance = governance::Governance::new(governance_address, client);
     // The method `.call()` is used for read-only calls. Therefore, it does
     // not need to be sent as a tx, and does not need block confirmations.

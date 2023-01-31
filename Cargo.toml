@@ -11,6 +11,8 @@ tokio = { version = "1.23.1", features = ["full"] }
 #namada = {path = "../namada/shared", default-features = false, features = ["wasm-runtime", "ferveo-tpke", "secp256k1-sign-verify"]}
 namada_core = {path = "../namada/core", default-features = false, features = ["secp256k1-sign-verify", "abciplus", "rand", "rand_core"]}
 rand = {version = "0.8", default-features = false}
+libsecp256k1 = {git = "https://github.com/heliaxdev/libsecp256k1", rev = "bbb3bd44a49db361f21d9db80f9a087c194c0ae9", default-features = false, features = ["std", "static-context"]}
+hex = "0.4.3"
 
 [patch.crates-io]
 # TODO temp patch for <https://github.com/near/borsh-rs/issues/82>, <https://github.com/near/borsh-rs/issues/84> and more tba.

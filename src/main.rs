@@ -2,7 +2,6 @@ use std::convert::TryFrom;
 
 use std::sync::Arc;
 
-use ethers::abi::ethabi::ethereum_types::U256;
 use ethers::core::types::Address;
 use ethers::providers::{Http, Provider};
 use ethers::signers::Signer;
@@ -58,47 +57,7 @@ async fn test_signing(client: Arc<Provider<Http>>) -> eyre::Result<()> {
         let key::common::Signature::Secp256k1(sig) = signed.sig else {
             panic!("AAAAAA");
         };
-        //let serialized_sig = libsecp256k1::Signature::serialize(&sig.0);
-        let (v, mut non_malleable_s): (u8, [u8; 32]) = {
-            let s_threshold = U256([
-                16134479119472337056,
-                6725966010171805725,
-                18446744073709551615,
-                9223372036854775807,
-            ]);
-            let s_threshold_2 = U256::from_str_radix(
-                "7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0",
-                16,
-            )
-            .unwrap();
-            assert_eq!(s_threshold, s_threshold_2);
-            let malleable_const = U256([
-                13822214165235122497,
-                13451932020343611451,
-                18446744073709551614,
-                18446744073709551615,
-            ]);
-            let malleable_const_2 = U256::from_str_radix(
-                "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
-                16,
-            )
-            .unwrap();
-            assert_eq!(malleable_const, malleable_const_2);
-            let s1: U256 = sig.0.s.b32().into();
-            let v = sig.1.serialize();
-            assert!(v == 0 || v == 1);
-            let (v, z) = if s1 > s_threshold {
-                // this code path seems quite rare. we often
-                // get non-malleable signatures, which is good
-                ((v ^ 1) + 27, malleable_const - s1)
-            } else {
-                (v + 27, s1)
-            };
-            (v, z.into())
-        };
-        sig.0.s.fill_b32(&mut non_malleable_s);
-        let r = sig.0.r.b32();
-        let s = sig.0.s.b32();
+        let (r, s, v) = sig.into_eth_rsv();
         (
             ethers::types::H160(addr.0),
             signed.data.0,

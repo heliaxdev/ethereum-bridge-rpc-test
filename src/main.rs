@@ -86,6 +86,7 @@ async fn test_signing(client: Arc<Provider<Http>>) -> eyre::Result<()> {
             assert_eq!(malleable_const, malleable_const_2);
             let s1: U256 = sig.0.s.b32().into();
             let v = sig.1.serialize();
+            assert!(v == 0 || v == 1);
             let (v, z) = if s1 > s_threshold {
                 // this code path seems quite rare. we often
                 // get non-malleable signatures, which is good

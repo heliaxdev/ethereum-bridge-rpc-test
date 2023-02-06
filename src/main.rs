@@ -15,12 +15,14 @@ use self::namada_queries::{ExecuteQuery, QueryExecutor};
 
 /// Arguments to the validator set update relay call.
 struct RelayArgs {
-    /// The set of active validators.
-    validators: Vec<H160>,
-    /// The voting powers of the set of active validators.
-    voting_powers: Vec<U256>,
-    /// The current epoch.
-    current_epoch: U256,
+    /// The set of active validators in the bridge.
+    bridge_validators: Vec<H160>,
+    /// The voting powers of the set of active validators in the bridge.
+    bridge_voting_powers: Vec<U256>,
+    /// The epoch of the set of active validators in the bridge.
+    bridge_current_epoch: U256,
+    /// The epoch of the next set of validators in the bridge.
+    next_active_epoch: U256,
     /// A hash of the next set of validators' hot keys.
     next_bridge_validator_set_hash: [u8; 32],
     /// A hash of the next set of validators' cold keys.
@@ -42,10 +44,10 @@ async fn main() -> eyre::Result<()> {
         eyre::bail!("Epoch value must be greater than 0");
     }
 
-    let prev_epoch = epoch - 1;
-    println!("Fetching active validator set of epoch {prev_epoch}...");
+    let bridge_current_epoch = epoch.saturating_sub(2);
+    println!("Fetching active validator set of epoch {bridge_current_epoch}...");
 
-    let query = QueryExecutor::active_validator_set().at_epoch(prev_epoch);
+    let query = QueryExecutor::active_validator_set().at_epoch(bridge_current_epoch);
     let valset_args = query.execute_query()?;
 
     println!("Done! Now fetching a validator set update proof...");
@@ -63,9 +65,10 @@ async fn main() -> eyre::Result<()> {
         Provider::<Http>::try_from("http://localhost:8545").wrap_err("Failed to get provider")?,
     );
     let args = RelayArgs {
-        validators: valset_args.validators,
-        voting_powers: valset_args.powers,
-        current_epoch: valset_args.nonce,
+        bridge_validators: valset_args.validators,
+        bridge_voting_powers: valset_args.powers,
+        bridge_current_epoch: valset_args.nonce,
+        next_active_epoch: epoch.into(),
         next_bridge_validator_set_hash: bridge_hash,
         next_governance_validator_set_hash: gov_hash,
         proof,
@@ -79,9 +82,10 @@ async fn main() -> eyre::Result<()> {
 /// Relay a validator set update to Ethereum.
 async fn relay_proof(client: Arc<Provider<Http>>, args: RelayArgs) -> eyre::Result<()> {
     let RelayArgs {
-        validators,
-        voting_powers,
-        current_epoch,
+        bridge_validators,
+        bridge_voting_powers,
+        bridge_current_epoch,
+        next_active_epoch,
         next_bridge_validator_set_hash,
         next_governance_validator_set_hash,
         proof,
@@ -93,14 +97,14 @@ async fn relay_proof(client: Arc<Provider<Http>>, args: RelayArgs) -> eyre::Resu
     let relay_op = governance
         .update_validators_set(
             ValidatorSetArgs {
-                validators,
-                powers: voting_powers,
-                nonce: current_epoch,
+                validators: bridge_validators,
+                powers: bridge_voting_powers,
+                nonce: bridge_current_epoch,
             },
             next_bridge_validator_set_hash,
             next_governance_validator_set_hash,
             proof,
-            current_epoch + 1,
+            next_active_epoch,
         )
         .gas(600_000);
     let pending_tx = relay_op.send().await?;

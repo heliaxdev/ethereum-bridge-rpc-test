@@ -7,13 +7,6 @@ pub mod bridge {
     );
 }
 
-pub mod test_erc20 {
-    ethers::contract::abigen!(
-        TestERC20,
-        "res/TestERC20.abi";
-    );
-}
-
 pub mod governance {
     ethers::contract::abigen!(
         Governance,

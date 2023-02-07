@@ -10,7 +10,8 @@ use ethers::providers::{Http, Provider};
 use ethers::types::{H160, U256};
 use eyre::WrapErr;
 
-use self::contracts::governance::{Governance, Signature, ValidatorSetArgs};
+use self::contracts::bridge::{self, Bridge, Erc20Transfer};
+use self::contracts::governance::{self, Governance};
 use self::namada_queries::{ExecuteQuery, QueryExecutor};
 
 /// Arguments to the validator set update relay call.
@@ -26,7 +27,31 @@ struct RelayArgs {
     /// A hash of the next set of validators' cold keys.
     next_governance_validator_set_hash: [u8; 32],
     /// The signatures over the next set of validators.
-    proof: Vec<Signature>,
+    proof: Vec<governance::Signature>,
+}
+
+/// Arguments to the validator set update relay call.
+struct BPProofArgs {
+    /// The set of active validators.
+    validators: Vec<H160>,
+    /// The voting powers of the set of active validators.
+    voting_powers: Vec<U256>,
+    /// Epoch
+    epoch: U256,
+    /// Some signatures
+    signatures: Vec<bridge::Signature>,
+    /// Some transfer to Ethereum
+    transfers: Vec<Erc20Transfer>,
+    /// The root of the bridge pool
+    pool_root: [u8; 32],
+    /// A merkle proof
+    proof: Vec<[u8; 32]>,
+    /// Augmented data for the merkle proof
+    proof_flags: Vec<bool>,
+    /// replay protection
+    nonce: U256,
+    /// The Namada rewards address for relaying
+    relayer_address: String,
 }
 
 #[tokio::main]
@@ -92,7 +117,7 @@ async fn relay_proof(client: Arc<Provider<Http>>, args: RelayArgs) -> eyre::Resu
 
     let relay_op = governance
         .update_validators_set(
-            ValidatorSetArgs {
+            governance::ValidatorSetArgs {
                 validators,
                 powers: voting_powers,
                 nonce: current_epoch,
@@ -103,6 +128,48 @@ async fn relay_proof(client: Arc<Provider<Http>>, args: RelayArgs) -> eyre::Resu
             current_epoch + 1,
         )
         .gas(600_000);
+    let pending_tx = relay_op.send().await?;
+
+    // The method `.send()` is used for mutable calls. For this reason, it
+    // needs a certain number of block confirmations.
+    let transf_result = pending_tx.confirmations(1).await?;
+    println!("{transf_result:?}");
+
+    Ok(())
+}
+
+/// Relay a bridge pool proof to Ethereum.
+async fn relay_bp_proof(client: Arc<Provider<Http>>, args: BPProofArgs) -> eyre::Result<()> {
+    let BPProofArgs {
+        validators,
+        voting_powers,
+        epoch,
+        signatures,
+        transfers,
+        pool_root,
+        proof,
+        proof_flags,
+        nonce,
+        relayer_address,
+    } = args;
+
+    let bridge_address = "0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9".parse::<Address>()?;
+    let bridge = Bridge::new(bridge_address, client);
+    let relay_op = bridge.transfer_to_erc(
+        bridge::ValidatorSetArgs {
+            validators,
+            powers: voting_powers,
+            nonce: epoch,
+        },
+        signatures,
+        transfers,
+        pool_root,
+        proof,
+        proof_flags,
+        nonce,
+        relayer_address,
+    )
+    .gas(600_000);
     let pending_tx = relay_op.send().await?;
 
     // The method `.send()` is used for mutable calls. For this reason, it

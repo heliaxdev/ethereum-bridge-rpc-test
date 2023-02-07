@@ -16,6 +16,14 @@ pub enum ActiveValidatorSet {}
 /// of validators at some epoch.
 pub enum ValidatorSetUpdateProof {}
 
+/// Tag type to indicate a query to et the transfers in the
+/// bridge pool covered with a signed Merkle root.
+pub enum ProvableBridgePoolContents {}
+
+/// Tag type to indicate a query to construct a Merkle
+/// proof of a given set of transfers in the bridge pool.
+pub enum BridgePoolProof {}
+
 /// Execute queries to ABI encoded data in Namada.
 pub struct QueryExecutor<K> {
     epoch: Option<u64>,
@@ -117,6 +125,35 @@ fn query_valset_abi_data(command: &str, epoch: Option<u64>) -> eyre::Result<Vec<
 
     // fetch hex data as str and validate it
     let abi_data = std::str::from_utf8(&output.stdout)
+        .wrap_err("Invalid UTF-8 data in the relayer's response")?
+        .trim();
+
+    let prefix = abi_data
+        .get(..2)
+        .ok_or_else(|| eyre::eyre!("Short relayer response"))?;
+    if prefix != "0x" {
+        eyre::bail!("The Namada relayer response did not return ABI encoded data in string form");
+    }
+
+    // decode hex data
+    hex::decode(&abi_data[2..]).wrap_err("Invalid hex encoded ABI data")
+}
+
+
+/// Fetch ABI encoded data from the given bridge pool command.
+fn query_bridge_pool_data(command: &str, epoch: Option<u64>) -> eyre::Result<Vec<u8>> {
+    let mut cmd = Command::new("namadar");
+
+    cmd.arg("ethereum-bridge-pool")
+        .arg(command);
+
+    let output = cmd.output().wrap_err("Failed to execute `namadar`")?;
+    if output.status.code() != Some(0) {
+        eyre::bail!("The Namada relayer halted unexpectedly; is the ledger running?");
+    }
+
+    // fetch hex data as str and validate it
+    let data = std::str::from_utf8(&output.stdout)
         .wrap_err("Invalid UTF-8 data in the relayer's response")?
         .trim();
 

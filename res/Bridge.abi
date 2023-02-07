@@ -110,12 +110,23 @@
             "internalType": "uint256",
             "name": "fee",
             "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "sender",
+            "type": "string"
           }
         ],
         "indexed": false,
         "internalType": "struct ICommon.ERC20Transfer[]",
         "name": "transfers",
         "type": "tuple[]"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "relayerAddress",
+        "type": "string"
       }
     ],
     "name": "TransferToERC",
@@ -343,6 +354,11 @@
             "internalType": "uint256",
             "name": "fee",
             "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "sender",
+            "type": "string"
           }
         ],
         "internalType": "struct ICommon.ERC20Transfer[]",
@@ -368,6 +384,11 @@
         "internalType": "uint256",
         "name": "batchNonce",
         "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "relayerAddress",
+        "type": "string"
       }
     ],
     "name": "transferToERC",

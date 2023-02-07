@@ -15,13 +15,6 @@ mod bridge {
     );
 }
 
-mod test_erc_20 {
-    ethers::contract::abigen!(
-        TestERC20,
-        "res/TestERC20.abi";
-    );
-}
-
 mod governance {
     ethers::contract::abigen!(
         Governance,

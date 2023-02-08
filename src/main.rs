@@ -10,6 +10,7 @@ use ethers::core::types::Address;
 use ethers::providers::{Http, Provider};
 use ethers::types::{H160, U256};
 use eyre::WrapErr;
+use crate::namada_queries::LEDGER_ADDRESS;
 
 use self::contracts::bridge::{self, Bridge, Erc20Transfer};
 use self::contracts::governance::{self, Governance};
@@ -57,13 +58,33 @@ struct BPProofArgs {
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let Some(epoch) = std::env::args()
+    match std::env::args()
         .nth(1)
-        .map(|x| x.parse::<u64>())
-        .transpose()
-        .wrap_err("Failed to parse epoch")? else {
-        eyre::bail!("No epoch argument provided");
-    };
+        .unwrap()
+        .as_str() {
+        "valset" => {
+            let Some(epoch) = std::env::args()
+                .nth(2)
+                .map(|x| x.parse::<u64>())
+                .transpose()
+                .wrap_err("Failed to parse epoch")? else {
+                eyre::bail!("No epoch argument provided");
+            };
+            relay_test(epoch).await
+        },
+        "bridge-pool" => {
+            bridge_pool_test().await
+        },
+        wrong @ _ => panic!(
+            "Unsupported first argument: {}.\n\
+             Expected 'valset' or 'bridge-pool'",
+            wrong
+        )
+    }
+
+}
+
+async fn relay_test(epoch: u64) -> eyre::Result<()> {
     if epoch == 0 {
         eyre::bail!("Epoch value must be greater than 0");
     }
@@ -136,6 +157,32 @@ async fn relay_proof(client: Arc<Provider<Http>>, args: RelayArgs) -> eyre::Resu
     let transf_result = pending_tx.confirmations(1).await?;
     println!("{transf_result:?}");
 
+    Ok(())
+}
+
+/// Test that relaying a bridge pool proof works.
+async fn bridge_pool_test() -> eyre::Result<()> {
+    let transfers = QueryExecutor::signed_bridge_pool_transfers()
+        .ledger_address(std::env::var("LEDGER").unwrap_or(LEDGER_ADDRESS.into()))
+        .base_dir(std::env::var("BASE_DIR").unwrap_or(String::from(".namada").into()))
+        .execute_query()?;
+    let relayer = transfers
+        .bridge_pool_contents
+        .iter()
+        .next()
+        .unwrap()
+        .1
+        .transfer
+        .sender
+        .clone();
+    let proof = QueryExecutor::bridge_pool_proof()
+        .ledger_address(std::env::var("LEDGER").unwrap_or(LEDGER_ADDRESS.into()))
+        .base_dir(std::env::var("BASE_DIR").unwrap_or(String::from(".namada").into()))
+        .hashes(transfers.bridge_pool_contents.keys().cloned().collect())
+        .with_relayer(relayer)
+        .execute_query()?
+        .proof;
+    println!("Got proof:\n {:?}", proof);
     Ok(())
 }
 

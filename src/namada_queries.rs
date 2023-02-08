@@ -3,10 +3,9 @@
 use std::marker::PhantomData;
 use std::process::Command;
 
+use ethbridge_structs::{Signature, ValidatorSetArgs};
 use ethers::abi::{self, ParamType, Tokenizable};
 use eyre::WrapErr;
-
-use crate::contracts::governance::{Signature, ValidatorSetArgs};
 
 /// Tag type to indicate a query to the active set of validators
 /// at some epoch.

@@ -1,16 +1,16 @@
-mod contracts;
 mod namada_queries;
 
 use std::convert::TryFrom;
 
 use std::sync::Arc;
 
+use ethbridge_governance_contract::Governance;
+use ethbridge_structs::{Signature, ValidatorSetArgs};
 use ethers::core::types::Address;
 use ethers::providers::{Http, Provider};
 use ethers::types::{H160, U256};
 use eyre::WrapErr;
 
-use self::contracts::governance::{Governance, Signature, ValidatorSetArgs};
 use self::namada_queries::{ExecuteQuery, QueryExecutor};
 
 /// Arguments to the validator set update relay call.

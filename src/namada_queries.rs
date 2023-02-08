@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::process::Command;
 
+use ethbridge_structs::{Signature, ValidatorSetArgs};
 use ethers::abi::{self, ParamType, Tokenizable};
 use eyre::{eyre, WrapErr};
 use serde::{Serialize, Deserialize};

@@ -94,7 +94,7 @@ async fn relay_proof(client: Arc<Provider<Http>>, args: RelayArgs) -> eyre::Resu
     let governance_address = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9".parse::<Address>()?;
     let governance = Governance::new(governance_address, client);
 
-    let relay_op = governance
+    let mut relay_op = governance
         .update_validators_set(
             ValidatorSetArgs {
                 validators: bridge_validators,
@@ -107,6 +107,9 @@ async fn relay_proof(client: Arc<Provider<Http>>, args: RelayArgs) -> eyre::Resu
             next_active_epoch,
         )
         .gas(600_000);
+    relay_op
+        .tx
+        .set_from("0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199".parse::<Address>()?);
     let pending_tx = relay_op.send().await?;
 
     // The method `.send()` is used for mutable calls. For this reason, it

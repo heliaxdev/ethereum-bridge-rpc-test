@@ -81,7 +81,7 @@ pub struct Amount(u64);
 
 impl<'a> From<&'a str> for Amount {
     fn from(val: &'a str) -> Self {
-        Self(u64::from_str_radix(&val, 10).unwrap())
+        Self(val.parse::<u64>().unwrap())
     }
 }
 

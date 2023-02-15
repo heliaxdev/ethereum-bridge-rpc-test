@@ -4,11 +4,10 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::process::Command;
 
-use ethbridge_structs::{Signature, ValidatorSetArgs};
-use ethers::abi::{self, ParamType, Tokenizable};
+use ethbridge_structs::{RelayProof, Signature, ValidatorSetArgs};
+use ethers::abi::{self, AbiDecode, ParamType, Tokenizable};
 use eyre::{eyre, WrapErr};
 use serde::{Serialize, Deserialize};
-use crate::contracts::governance::{Signature, ValidatorSetArgs};
 use crate::types::PendingTransfer;
 
 pub const LEDGER_ADDRESS: &str = "127.0.0.1:26657";
@@ -217,7 +216,7 @@ impl ExecuteQuery for QueryExecutor<ProvableBridgePoolContents> {
 }
 
 impl ExecuteQuery for QueryExecutor<BridgePoolProof> {
-    type Response = ProofResponse;
+    type Response = RelayProof;
 
     fn execute_query(&self) -> eyre::Result<Self::Response> {
         let mut extra_args = vec![("--relayer".into(), self.relayer.clone())];
@@ -225,7 +224,7 @@ impl ExecuteQuery for QueryExecutor<BridgePoolProof> {
         for hash in &self.hashes {
             hashes_str.push_str(&format!("{} ", hash));
         }
-        let hashes_str = format!("{}", hashes_str.trim());
+        let hashes_str = hashes_str.trim().to_string();
         extra_args.push(("--hash-list".into(), hashes_str));
         let proof = query_bridge_pool_data(
             &self.base_dir,
@@ -237,8 +236,10 @@ impl ExecuteQuery for QueryExecutor<BridgePoolProof> {
             .strip_prefix("Ethereum ABI-encoded proof:\n ")
             .unwrap();
 
-        serde_json::from_str(proof)
-            .map_err(|e| eyre!("Could not parse response as json due to {:?}.", e))
+        let proof_response: ProofResponse = serde_json::from_str(proof)
+            .map_err(|e| eyre!("Could not parse response as json due to {:?}.", e))?;
+         RelayProof::decode(proof_response.proof)
+            .wrap_err("Could not deserialize RelayProof.")
     }
 }
 
@@ -250,7 +251,7 @@ fn query_valset_abi_data(
     epoch: Option<u64>
 ) -> eyre::Result<Vec<u8>> {
     let namadar_path = std::env::var("NAMADAR")
-        .unwrap_or(String::from("namadar"));
+        .unwrap_or_else(|_| String::from("namadar"));
     let mut cmd = Command::new(&namadar_path);
 
     cmd.args(vec!["--base-dir", base_dir, "validator-set", command]);
@@ -290,7 +291,7 @@ fn query_bridge_pool_data(
 ) -> eyre::Result<String> {
     let extra_args = extra.as_ref();
     let namadar_path = std::env::var("NAMADAR")
-        .unwrap_or(String::from("namadar"));
+        .unwrap_or_else(|_| String::from("namadar"));
     let mut cmd = Command::new(&namadar_path);
 
 
